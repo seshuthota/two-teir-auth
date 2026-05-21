@@ -68,28 +68,22 @@ public class L2ClientService {
                                        Class<T> responseType) {
         var client = pickClient();
         var httpMethod = HttpMethod.valueOf(method);
-        var uriSpec = client.method(httpMethod);
+        var uriSpec = client.method(httpMethod).uri(path);
+
+        if (token != null) {
+            uriSpec = uriSpec.header("Authorization", "Bearer " + token);
+        }
+        uriSpec = uriSpec.header("X-Correlation-Id", correlationId);
 
         if (body != null) {
-            return uriSpec.uri(path)
-                    .header("Authorization", "Bearer " + token)
-                    .header("X-Correlation-Id", correlationId)
-                    .bodyValue(body)
-                    .retrieve()
-                    .onStatus(HttpStatusCode::is4xxClientError, response ->
-                            response.bodyToMono(ApiErrorResponse.class)
-                                    .flatMap(err -> Mono.error(new L2ClientException(err))))
-                    .bodyToMono(responseType);
-        } else {
-            return uriSpec.uri(path)
-                    .header("Authorization", "Bearer " + token)
-                    .header("X-Correlation-Id", correlationId)
-                    .retrieve()
-                    .onStatus(HttpStatusCode::is4xxClientError, response ->
-                            response.bodyToMono(ApiErrorResponse.class)
-                                    .flatMap(err -> Mono.error(new L2ClientException(err))))
-                    .bodyToMono(responseType);
+            uriSpec = uriSpec.bodyValue(body);
         }
+
+        return uriSpec.retrieve()
+                .onStatus(HttpStatusCode::is4xxClientError, response ->
+                        response.bodyToMono(ApiErrorResponse.class)
+                                .flatMap(err -> Mono.error(new L2ClientException(err))))
+                .bodyToMono(responseType);
     }
 
     public static class L2ClientException extends RuntimeException {

@@ -47,4 +47,29 @@ public class InternalShipmentController {
 
         return ResponseEntity.ok(businessService.createShipment(body));
     }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<?> updateShipment(
+            @PathVariable String id,
+            @RequestBody Map<String, Object> body,
+            @RequestHeader("Authorization") String authHeader) {
+        var token = authHeader.replace("Bearer ", "");
+        var result = tokenValidator.validate(token);
+        if (!result.valid()) {
+            return ResponseEntity.status(401).body(Map.of(
+                    "status", 401, "error", "UNAUTHORIZED",
+                    "code", result.errorCode(), "message", result.errorMessage()
+            ));
+        }
+
+        if (!permissionService.hasRequiredScope("PUT", "/shipment/{id}", result.scope())) {
+            return ResponseEntity.status(403).body(Map.of(
+                    "status", 403, "error", "FORBIDDEN",
+                    "code", "AUTH_INSUFFICIENT_SCOPE",
+                    "message", "Token does not have the required scope"
+            ));
+        }
+
+        return ResponseEntity.ok(businessService.updateShipment(id, body));
+    }
 }

@@ -31,4 +31,16 @@ public class ShipmentController {
                         token, body, correlationId, Map.class)
                 .map(ResponseEntity::ok);
     }
+
+    @PutMapping("/{id}")
+    public Mono<ResponseEntity<Map>> updateShipment(
+            @PathVariable String id,
+            @RequestBody Map<String, Object> body,
+            @RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader) {
+        var correlationId = correlationIdService.generate();
+        var token = authHeader.replace("Bearer ", "");
+        return l2Client.forwardRequest("/internal/shipment/" + id, "PUT",
+                        token, body, correlationId, Map.class)
+                .map(ResponseEntity::ok);
+    }
 }

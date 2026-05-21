@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "User Auth API",
-    "description": "Complete collection for testing the two-tier authentication system.\n\n## Architecture\n- **L1 Gateway** (port 8080) — thin proxy, forwards requests to L2\n- **L1 Shipment Service** (port 8082) — standalone microservice with local JWT validation\n- **L2 Auth Service** (port 8081) — internal auth + business logic\n\n## Setup\n1. Import this collection into Postman\n2. The `baseUrl` variable defaults to `http://localhost:8080`\n3. Use **Get Access Token** first, then run protected endpoints\n4. The `accessToken` variable is auto-saved via the Tests script",
+    "description": "Complete collection for testing the two-tier authentication system.\n\n## Architecture\n- **L1 Gateway** (port 8080) — thin proxy, forwards requests to L2\n- **L1 Shipment Service** (port 8082) — standalone microservice with local JWT validation\n- **L2 Auth Service** (port 8081) — internal auth + business logic\n\n## Folders\n- **Authentication** — token issuance, refresh, logout\n- **User Onboarding** — client registration, scope assignment, secret rotation, API-scope mapping\n- **L1 Gateway Proxy APIs** — business endpoints (tracking, shipment, invoice, status)\n- **L1 Shipment Service** — shipment with local JWT validation\n- **L2 Internal** — direct L2 access for debugging\n- **Error Scenarios** — missing/invalid/expired token, wrong credentials\n\n## Setup\n1. Import this collection into Postman\n2. The `baseUrl` variable defaults to `http://localhost:8080`\n3. Use **Get Access Token** first, then run protected endpoints\n4. The `accessToken` variable is auto-saved via the Tests script",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "user-auth"
   },
@@ -269,6 +269,143 @@
             "description": "Unlock a client that was auto-locked after 5 failed auth attempts.\n\nResets the failure counter and sets status back to `ACTIVE`."
           },
           "response": []
+        },
+        {
+          "name": "List Clients",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/clients",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "clients"]
+            },
+            "description": "List all registered clients."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Client Details",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/clients/{{newClientId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "clients", "{{newClientId}}"]
+            },
+            "description": "Get details for a specific client."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Client Status",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"status\": \"SUSPENDED\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/clients/{{newClientId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "clients", "{{newClientId}}", "status"]
+            },
+            "description": "Change client status.\n\n**Valid values:** `ACTIVE`, `INACTIVE`, `SUSPENDED`, `LOCKED`, `DELETED`"
+          },
+          "response": []
+        },
+        {
+          "name": "Revoke All Tokens",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": { "mode": "raw", "raw": "" },
+            "url": {
+              "raw": "{{baseUrl}}/admin/clients/{{newClientId}}/revoke-tokens",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "clients", "{{newClientId}}", "revoke-tokens"]
+            },
+            "description": "Revoke all active tokens for a client. Use in case of compromise.\n\nIterates through Redis sessions and marks every JTI as revoked."
+          },
+          "response": []
+        },
+        {
+          "name": "Rotate Client Secret",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"newSecret\": \"REPLACE_WITH_NEW_SECRET\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/clients/{{newClientId}}/rotate-secret",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "clients", "{{newClientId}}", "rotate-secret"]
+            },
+            "description": "Rotate the client secret. The new secret is hashed server-side before storage.\n\n**Important:** Share the new plaintext secret with the partner out-of-band."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Scope",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"scopeName\": \"billing:read\",\n    \"description\": \"View billing information\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/scopes",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "scopes"]
+            },
+            "description": "Create a new permission scope."
+          },
+          "response": []
+        },
+        {
+          "name": "List API-Scope Mappings",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/api-scope-mappings",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "api-scope-mappings"]
+            },
+            "description": "List all API endpoint-to-scope mappings."
+          },
+          "response": []
+        },
+        {
+          "name": "Create API-Scope Mapping",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"httpMethod\": \"GET\",\n    \"apiPattern\": \"/billing/invoice\",\n    \"requiredScope\": \"billing:read\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/api-scope-mappings",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "api-scope-mappings"]
+            },
+            "description": "Map an API endpoint to a required scope.\n\nThe pattern supports wildcards: `/billing/**` matches any `/billing/xxx` path."
+          },
+          "response": []
         }
       ]
     },
@@ -370,6 +507,20 @@
             "description": "Get invoice details.\n\n**Required scope:** `invoice:read`"
           },
           "response": []
+        },
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["health"]
+            },
+            "description": "L1 health check endpoint."
+          },
+          "response": []
         }
       ]
     },
@@ -452,6 +603,60 @@
               "path": ["internal", "health"]
             },
             "description": "Basic health check for L2."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Admin (Direct L2)",
+      "description": "Direct admin access to L2 internal admin endpoints. Bypasses L1 proxy.",
+      "item": [
+        {
+          "name": "List Clients (Direct)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{l2Url}}/internal/admin/clients",
+              "host": ["{{l2Url}}"],
+              "path": ["internal", "admin", "clients"]
+            },
+            "description": "List all registered clients directly via L2."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Scope (Direct)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"scopeName\": \"custom:scope\",\n    \"description\": \"A custom scope\"\n}"
+            },
+            "url": {
+              "raw": "{{l2Url}}/internal/admin/scopes",
+              "host": ["{{l2Url}}"],
+              "path": ["internal", "admin", "scopes"]
+            },
+            "description": "Create a new scope directly via L2."
+          },
+          "response": []
+        },
+        {
+          "name": "List API-Scope Mappings (Direct)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{l2Url}}/internal/admin/api-scope-mappings",
+              "host": ["{{l2Url}}"],
+              "path": ["internal", "admin", "api-scope-mappings"]
+            },
+            "description": "List API-scope mappings directly via L2."
           },
           "response": []
         }
