@@ -55,6 +55,16 @@
       "key": "invoiceId",
       "value": "INV-001",
       "type": "string"
+    },
+    {
+      "key": "newClientId",
+      "value": "partner_acme_corp",
+      "type": "string"
+    },
+    {
+      "key": "newClientSecret",
+      "value": "",
+      "type": "string"
     }
   ],
   "item": [
@@ -143,6 +153,120 @@
               "path": ["auth", "logout"]
             },
             "description": "Revoke the current access token. Token is added to a Redis revocation set."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "User Onboarding",
+      "description": "Admin endpoints for registering new clients, assigning scopes, and managing client lifecycle.\n\n**Onboarding workflow:**\n1. Generate a secure client secret (see Generate Secret helper)\n2. Register the client via **Register Client**\n3. Assign scopes via **Assign Scopes**\n4. Provide the `clientId` and plaintext secret to the partner",
+      "item": [
+        {
+          "name": "Generate Client Secret (helper)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "https://www.random.org/strings/?num=1&len=48&digits=on&upperalpha=on&loweralpha=on&unique=on&format=plain",
+              "host": ["https://www.random.org"],
+              "path": ["strings"],
+              "query": [
+                { "key": "num", "value": "1" },
+                { "key": "len", "value": "48" },
+                { "key": "digits", "value": "on" },
+                { "key": "upperalpha", "value": "on" },
+                { "key": "loweralpha", "value": "on" },
+                { "key": "unique", "value": "on" },
+                { "key": "format", "value": "plain" }
+              ]
+            },
+            "description": "Generate a cryptographically random 48-char secret.\n\n**Manual alternative (CLI):**\n```bash\npython3 -c \"import secrets, base64; print(base64.urlsafe_b64encode(secrets.token_bytes(48)).rstrip(b'=').decode())\"\n```\n\nAfter generating, set `newClientSecret` collection variable before registering."
+          },
+          "response": []
+        },
+        {
+          "name": "Register Client",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (pm.response.code === 201) {",
+                  "  console.log('Client registered:', jsonData.clientId);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"clientId\": \"{{newClientId}}\",\n    \"clientName\": \"Acme Corporation\",\n    \"clientSecret\": \"{{newClientSecret}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/clients",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "clients"]
+            },
+            "description": "Register a new API client.\n\nThe secret is hashed server-side (SHA-256 + salt) before storage.\nThe plaintext secret must be shared with the partner securely.\n\n**Note:** Set `newClientSecret` variable first using Generate Secret helper."
+          },
+          "response": []
+        },
+        {
+          "name": "Assign Scopes to Client",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"scopes\": [\n        \"tracking:read\",\n        \"shipment:create\"\n    ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/clients/{{newClientId}}/scopes",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "clients", "{{newClientId}}", "scopes"]
+            },
+            "description": "Assign one or more scopes to a client.\n\n**Available scopes:** `tracking:read`, `shipment:create`, `shipment:update`, `status:update`, `invoice:read`\n\nSee **List Available Scopes** for the full list."
+          },
+          "response": []
+        },
+        {
+          "name": "List Available Scopes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/scopes",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "scopes"]
+            },
+            "description": "List all registered scopes and their descriptions."
+          },
+          "response": []
+        },
+        {
+          "name": "Unlock Client",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "" },
+            "url": {
+              "raw": "{{baseUrl}}/admin/clients/{{newClientId}}/unlock",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "clients", "{{newClientId}}", "unlock"]
+            },
+            "description": "Unlock a client that was auto-locked after 5 failed auth attempts.\n\nResets the failure counter and sets status back to `ACTIVE`."
           },
           "response": []
         }
