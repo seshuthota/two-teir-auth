@@ -95,4 +95,10 @@ public class InternalAuthController {
 
         return ResponseEntity.ok().build();
     }
+
+    @GetMapping("/check-revocation")
+    public ResponseEntity<Map<String, Object>> checkRevocation(@RequestParam String jti) {
+        var revoked = tokenRedisRepository.isTokenRevoked(jti);
+        return ResponseEntity.ok(Map.of("revoked", revoked));
+    }
 }

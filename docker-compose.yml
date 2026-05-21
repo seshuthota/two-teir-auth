@@ -28,5 +28,20 @@ services:
       timeout: 3s
       retries: 5
 
+  l1-shipment:
+    image: eclipse-temurin:21-jre-alpine
+    container_name: user-auth-shipment
+    ports:
+      - "8082:8082"
+    command: >
+      sh -c "apk add --no-cache curl && sleep 15 && java -jar /app/app.jar"
+    volumes:
+      - ./l1-shipment-service/target/l1-shipment-service-1.0.0.jar:/app/app.jar
+    environment:
+      - L2_BASE_URL=http://l2-app-1:8081
+    depends_on:
+      redis:
+        condition: service_healthy
+
 volumes:
   oracle-data:
