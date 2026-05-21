@@ -1,0 +1,414 @@
+{
+  "info": {
+    "name": "User Auth API",
+    "description": "Complete collection for testing the two-tier authentication system.\n\n## Architecture\n- **L1 Gateway** (port 8080) — thin proxy, forwards requests to L2\n- **L1 Shipment Service** (port 8082) — standalone microservice with local JWT validation\n- **L2 Auth Service** (port 8081) — internal auth + business logic\n\n## Setup\n1. Import this collection into Postman\n2. The `baseUrl` variable defaults to `http://localhost:8080`\n3. Use **Get Access Token** first, then run protected endpoints\n4. The `accessToken` variable is auto-saved via the Tests script",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "user-auth"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "shipmentUrl",
+      "value": "http://localhost:8082",
+      "type": "string"
+    },
+    {
+      "key": "l2Url",
+      "value": "http://localhost:8081",
+      "type": "string"
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "refreshToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "clientId",
+      "value": "external_partner_001",
+      "type": "string"
+    },
+    {
+      "key": "clientSecret",
+      "value": "secret123",
+      "type": "string"
+    },
+    {
+      "key": "awb",
+      "value": "AWB12345",
+      "type": "string"
+    },
+    {
+      "key": "shipmentId",
+      "value": "SHP-001",
+      "type": "string"
+    },
+    {
+      "key": "invoiceId",
+      "value": "INV-001",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "description": "Token issuance, refresh, and revocation endpoints.",
+      "item": [
+        {
+          "name": "Get Access Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "pm.collectionVariables.set('accessToken', jsonData.accessToken);",
+                  "pm.collectionVariables.set('refreshToken', jsonData.refreshToken);",
+                  "console.log('Token saved:', jsonData.accessToken?.substring(0, 50) + '...');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"grantType\": \"client_credentials\",\n    \"clientId\": \"{{clientId}}\",\n    \"clientSecret\": \"{{clientSecret}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/token",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "token"]
+            },
+            "description": "Obtain a JWT access token using client credentials grant.\n\n**Response includes:**\n- `accessToken` — RS256-signed JWT (15 min expiry)\n- `refreshToken` — opaque token for renewing (7 day expiry)\n- `scope` — space-separated list of granted scopes"
+          },
+          "response": []
+        },
+        {
+          "name": "Refresh Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "pm.collectionVariables.set('accessToken', jsonData.accessToken);",
+                  "pm.collectionVariables.set('refreshToken', jsonData.refreshToken);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"refreshToken\": \"{{refreshToken}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/refresh",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "refresh"]
+            },
+            "description": "Exchange a refresh token for a new access + refresh token pair.\n\nThe old refresh token is invalidated (rotation)."
+          },
+          "response": []
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": { "mode": "raw", "raw": "" },
+            "url": {
+              "raw": "{{baseUrl}}/auth/logout",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "logout"]
+            },
+            "description": "Revoke the current access token. Token is added to a Redis revocation set."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "L1 Gateway Proxy APIs",
+      "description": "Business APIs proxied through the L1 gateway to L2. Token is forwarded for server-side validation.",
+      "item": [
+        {
+          "name": "Get Tracking",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/tracking/{{awb}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["tracking", "{{awb}}"]
+            },
+            "description": "Get tracking information for an airway bill.\n\n**Required scope:** `tracking:read`"
+          },
+          "response": []
+        },
+        {
+          "name": "Create Shipment (L1 Proxy)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"origin\": \"Warehouse A\",\n    \"destination\": \"Distribution Center B\",\n    \"description\": \"Electronics shipment\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/shipment",
+              "host": ["{{baseUrl}}"],
+              "path": ["shipment"]
+            },
+            "description": "Create a new shipment via the L1 proxy.\nToken is forwarded to L2 for validation.\n\n**Required scope:** `shipment:create`"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Shipment",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"status\": \"IN_TRANSIT\",\n    \"location\": \"Sorting Hub\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/shipment/{{shipmentId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["shipment", "{{shipmentId}}"]
+            },
+            "description": "Update an existing shipment.\n\n**Required scope:** `shipment:update`"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Status",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"currentStatus\": \"PENDING\",\n    \"newStatus\": \"IN_TRANSIT\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/status/update",
+              "host": ["{{baseUrl}}"],
+              "path": ["status", "update"]
+            },
+            "description": "Update status of a shipment or process.\n\n**Required scope:** `status:update`"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Invoice",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/invoice/{{invoiceId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["invoice", "{{invoiceId}}"]
+            },
+            "description": "Get invoice details.\n\n**Required scope:** `invoice:read`"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "L1 Shipment Service (Local JWT Validation)",
+      "description": "Standalone shipment microservice that validates the JWT itself (signature + expiry) and checks revocation via L2.",
+      "item": [
+        {
+          "name": "Create Shipment (Local Validation)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"origin\": \"Port of Shanghai\",\n    \"destination\": \"Port of Los Angeles\",\n    \"description\": \"Container shipment — electronics\"\n}"
+            },
+            "url": {
+              "raw": "{{shipmentUrl}}/shipment",
+              "host": ["{{shipmentUrl}}"],
+              "path": ["shipment"]
+            },
+            "description": "Create shipment via the standalone `l1-shipment-service`.\n\n**Token validation flow:**\n1. JWT signature + expiry — **validated locally** (RS256 public key)\n2. Required scope (`shipment:create`) — **checked from JWT claims**\n3. Revocation — calls `L2 /internal/auth/check-revocation`"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "L2 Internal (Direct Access)",
+      "description": "Direct access to L2 internal endpoints. Useful for debugging and manual testing.",
+      "item": [
+        {
+          "name": "Issue Token (Direct)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"clientId\": \"{{clientId}}\",\n    \"clientSecret\": \"{{clientSecret}}\"\n}"
+            },
+            "url": {
+              "raw": "{{l2Url}}/internal/auth/token",
+              "host": ["{{l2Url}}"],
+              "path": ["internal", "auth", "token"]
+            },
+            "description": "Direct token issuance from L2 (bypasses L1 proxy)."
+          },
+          "response": []
+        },
+        {
+          "name": "Check Token Revocation",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{l2Url}}/internal/auth/check-revocation?jti=REPLACE_WITH_JTI",
+              "host": ["{{l2Url}}"],
+              "path": ["internal", "auth", "check-revocation"],
+              "query": [
+                { "key": "jti", "value": "REPLACE_WITH_JTI" }
+              ]
+            },
+            "description": "Check if a specific JTI (JWT ID) has been revoked.\n\nExtract the `jti` from the JWT payload (the `jti` claim)."
+          },
+          "response": []
+        },
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{l2Url}}/internal/health",
+              "host": ["{{l2Url}}"],
+              "path": ["internal", "health"]
+            },
+            "description": "Basic health check for L2."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Error Scenarios",
+      "description": "Test cases for error handling.",
+      "item": [
+        {
+          "name": "Missing Token",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tracking/{{awb}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["tracking", "{{awb}}"]
+            },
+            "description": "Call a protected endpoint without any Authorization header.\n\n**Expected:** 401 Unauthorized"
+          },
+          "response": []
+        },
+        {
+          "name": "Invalid Token",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer invalid.jwt.here" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/tracking/{{awb}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["tracking", "{{awb}}"]
+            },
+            "description": "Call a protected endpoint with a malformed JWT.\n\n**Expected:** 401 Unauthorized (`AUTH_TOKEN_INVALID`)"
+          },
+          "response": []
+        },
+        {
+          "name": "Expired Token (Insufficient Scope)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/invoice/{{invoiceId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["invoice", "{{invoiceId}}"]
+            },
+            "description": "The test client `external_partner_001` has scopes `tracking:read` and `shipment:create` but NOT `invoice:read`.\n\n**Expected:** 403 Forbidden (`AUTH_INSUFFICIENT_SCOPE`)"
+          },
+          "response": []
+        },
+        {
+          "name": "Wrong Client Credentials",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"grantType\": \"client_credentials\",\n    \"clientId\": \"{{clientId}}\",\n    \"clientSecret\": \"wrong-secret\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/token",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "token"]
+            },
+            "description": "**Expected:** 401 Unauthorized"
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
