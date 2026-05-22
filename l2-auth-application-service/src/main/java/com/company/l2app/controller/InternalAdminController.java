@@ -11,6 +11,7 @@ import com.company.l2app.repository.AuthClientScopeRepository;
 import com.company.l2app.repository.AuthScopeRepository;
 import com.company.l2app.security.ClientSecretHasher;
 import com.company.l2app.service.AuditService;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -28,6 +29,7 @@ public class InternalAdminController {
     private final ClientSecretHasher secretHasher;
     private final TokenRedisRepository tokenRedisRepository;
     private final AuditService auditService;
+    private final long accessTokenTtlSeconds;
 
     public InternalAdminController(AuthClientRepository clientRepository,
                                     AuthClientScopeRepository clientScopeRepository,
@@ -35,7 +37,8 @@ public class InternalAdminController {
                                     AuthApiScopeMappingRepository apiScopeMappingRepository,
                                     ClientSecretHasher secretHasher,
                                     TokenRedisRepository tokenRedisRepository,
-                                    AuditService auditService) {
+                                    AuditService auditService,
+                                    @Value("${auth.jwt.access-token-expiration}") long accessTokenTtlSeconds) {
         this.clientRepository = clientRepository;
         this.clientScopeRepository = clientScopeRepository;
         this.scopeRepository = scopeRepository;
@@ -43,6 +46,7 @@ public class InternalAdminController {
         this.secretHasher = secretHasher;
         this.tokenRedisRepository = tokenRedisRepository;
         this.auditService = auditService;
+        this.accessTokenTtlSeconds = accessTokenTtlSeconds;
     }
 
     @PostMapping("/clients")
@@ -203,7 +207,7 @@ public class InternalAdminController {
     public ResponseEntity<Map<String, Object>> revokeAllTokens(@PathVariable String clientId) {
         var sessions = tokenRedisRepository.getActiveClientSessions(clientId);
         for (var jti : sessions) {
-            tokenRedisRepository.revokeToken(jti, 900);
+            tokenRedisRepository.revokeToken(jti, accessTokenTtlSeconds);
             tokenRedisRepository.deleteAccessTokenMetadata(jti);
             tokenRedisRepository.removeFromClientSessions(clientId, jti);
         }

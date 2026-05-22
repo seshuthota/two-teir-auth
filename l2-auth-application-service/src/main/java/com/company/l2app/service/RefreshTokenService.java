@@ -3,6 +3,7 @@ package com.company.l2app.service;
 import com.company.l2app.dto.TokenResponse;
 import com.company.l2app.redis.RefreshTokenRedisRepository;
 import com.company.l2app.redis.TokenRedisRepository;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.security.MessageDigest;
@@ -16,14 +17,17 @@ public class RefreshTokenService {
     private final TokenRedisRepository tokenRedisRepository;
     private final TokenService tokenService;
     private final ScopeService scopeService;
+    private final long refreshTokenTtlSeconds;
 
     public RefreshTokenService(RefreshTokenRedisRepository refreshTokenRedisRepository,
                                 TokenRedisRepository tokenRedisRepository, TokenService tokenService,
-                                ScopeService scopeService) {
+                                ScopeService scopeService,
+                                @Value("${auth.jwt.refresh-token-expiration}") long refreshTokenTtlSeconds) {
         this.refreshTokenRedisRepository = refreshTokenRedisRepository;
         this.tokenRedisRepository = tokenRedisRepository;
         this.tokenService = tokenService;
         this.scopeService = scopeService;
+        this.refreshTokenTtlSeconds = refreshTokenTtlSeconds;
     }
 
     public TokenResponse refresh(String refreshToken) {
@@ -41,12 +45,11 @@ public class RefreshTokenService {
         tokenRedisRepository.deleteAccessTokenMetadata(oldJti);
 
         var scope = scopeService.getClientScopeString(clientId);
-        var newTokenResponse = tokenService.issueTokens(clientId, scope, refreshToken);
+        var newTokenResponse = tokenService.issueTokens(clientId, scope);
 
         var newJti = tokenService.extractJti(newTokenResponse.accessToken());
         var refreshHash = hashRefreshToken(newTokenResponse.refreshToken());
-        var refreshTtl = 7 * 24 * 60 * 60L;
-        refreshTokenRedisRepository.saveRefreshTokenHash(refreshHash, clientId, newJti, refreshTtl);
+        refreshTokenRedisRepository.saveRefreshTokenHash(refreshHash, clientId, newJti, refreshTokenTtlSeconds);
 
         return newTokenResponse;
     }

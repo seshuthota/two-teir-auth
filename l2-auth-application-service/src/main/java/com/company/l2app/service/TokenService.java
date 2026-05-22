@@ -5,6 +5,7 @@ import com.company.l2app.entity.AuthClient;
 import com.company.l2app.redis.RefreshTokenRedisRepository;
 import com.company.l2app.redis.TokenRedisRepository;
 import com.company.l2app.security.JwtTokenProvider;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.security.MessageDigest;
@@ -21,26 +22,28 @@ public class TokenService {
     private final TokenRedisRepository tokenRedisRepository;
     private final RefreshTokenRedisRepository refreshTokenRedisRepository;
     private final SecureRandom secureRandom;
+    private final long refreshTokenTtlSeconds;
 
     public TokenService(JwtTokenProvider jwtTokenProvider, TokenRedisRepository tokenRedisRepository,
-                         RefreshTokenRedisRepository refreshTokenRedisRepository) {
+                         RefreshTokenRedisRepository refreshTokenRedisRepository,
+                         @Value("${auth.jwt.refresh-token-expiration}") long refreshTokenTtlSeconds) {
         this.jwtTokenProvider = jwtTokenProvider;
         this.tokenRedisRepository = tokenRedisRepository;
         this.refreshTokenRedisRepository = refreshTokenRedisRepository;
         this.secureRandom = new SecureRandom();
+        this.refreshTokenTtlSeconds = refreshTokenTtlSeconds;
     }
 
     public TokenResponse issueTokens(AuthClient client, String scope) {
         var accessToken = jwtTokenProvider.generateAccessToken(client.getClientId(), scope);
         var refreshToken = generateRefreshToken();
         var accessTtl = jwtTokenProvider.getAccessTokenExpirationSeconds();
-        var refreshTtl = 7 * 24 * 60 * 60L;
 
         var jti = extractJti(accessToken);
         tokenRedisRepository.saveAccessTokenMetadata(jti, client.getClientId(), accessTtl);
 
         var refreshHash = hashRefreshToken(refreshToken);
-        refreshTokenRedisRepository.saveRefreshTokenHash(refreshHash, client.getClientId(), jti, refreshTtl);
+        refreshTokenRedisRepository.saveRefreshTokenHash(refreshHash, client.getClientId(), jti, refreshTokenTtlSeconds);
 
         return new TokenResponse(accessToken, refreshToken, "Bearer", (int) accessTtl, scope);
     }
@@ -55,7 +58,7 @@ public class TokenService {
         }
     }
 
-    public TokenResponse issueTokens(String clientId, String scope, String refreshToken) {
+    public TokenResponse issueTokens(String clientId, String scope) {
         var accessToken = jwtTokenProvider.generateAccessToken(clientId, scope);
         var newRefreshToken = generateRefreshToken();
         var accessTtl = jwtTokenProvider.getAccessTokenExpirationSeconds();

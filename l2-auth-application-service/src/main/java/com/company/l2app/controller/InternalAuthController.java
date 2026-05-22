@@ -6,6 +6,7 @@ import com.company.l2app.dto.TokenResponse;
 import com.company.l2app.redis.TokenRedisRepository;
 import com.company.l2app.service.*;
 import com.company.l2app.security.TokenValidator;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -22,11 +23,13 @@ public class InternalAuthController {
     private final AuditService auditService;
     private final TokenValidator tokenValidator;
     private final TokenRedisRepository tokenRedisRepository;
+    private final long accessTokenExpirationSeconds;
 
     public InternalAuthController(ClientService clientService, TokenService tokenService,
-                                   RefreshTokenService refreshTokenService, ScopeService scopeService,
-                                   AuditService auditService, TokenValidator tokenValidator,
-                                   TokenRedisRepository tokenRedisRepository) {
+                                    RefreshTokenService refreshTokenService, ScopeService scopeService,
+                                    AuditService auditService, TokenValidator tokenValidator,
+                                    TokenRedisRepository tokenRedisRepository,
+                                    @Value("${auth.jwt.access-token-expiration}") long accessTokenExpirationSeconds) {
         this.clientService = clientService;
         this.tokenService = tokenService;
         this.refreshTokenService = refreshTokenService;
@@ -34,10 +37,15 @@ public class InternalAuthController {
         this.auditService = auditService;
         this.tokenValidator = tokenValidator;
         this.tokenRedisRepository = tokenRedisRepository;
+        this.accessTokenExpirationSeconds = accessTokenExpirationSeconds;
     }
 
     @PostMapping("/token")
     public ResponseEntity<TokenResponse> issueToken(@RequestBody TokenRequest request) {
+        if (!"client_credentials".equals(request.grantType())) {
+            return ResponseEntity.badRequest().body(null);
+        }
+
         var clientOpt = clientService.findByClientId(request.clientId());
         if (clientOpt.isEmpty()) {
             return ResponseEntity.status(401).body(null);
@@ -88,7 +96,7 @@ public class InternalAuthController {
         }
 
         // Revoke access token
-        tokenRedisRepository.revokeToken(result.jti(), 900);
+        tokenRedisRepository.revokeToken(result.jti(), accessTokenExpirationSeconds);
         tokenRedisRepository.deleteAccessTokenMetadata(result.jti());
         tokenRedisRepository.removeFromClientSessions(result.clientId(), result.jti());
         auditService.log(result.clientId(), result.jti(), "TOKEN_REVOKED", "SUCCESS");

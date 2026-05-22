@@ -98,8 +98,10 @@ public class TokenRedisRepository {
 
     public void incrementFailedAuth(String clientId, Duration ttl) {
         var key = "auth:failure:" + clientId;
-        redis.opsForValue().increment(key);
-        redis.expire(key, ttl);
+        var count = redis.opsForValue().increment(key);
+        if (count != null && count == 1) {
+            redis.expire(key, ttl);
+        }
     }
 
     public int getFailedAuthCount(String clientId) {

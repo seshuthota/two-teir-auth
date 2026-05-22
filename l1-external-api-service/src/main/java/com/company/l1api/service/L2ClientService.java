@@ -4,6 +4,7 @@ import com.company.l1api.dto.ApiErrorResponse;
 import com.company.l1api.dto.TokenResponse;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatusCode;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
@@ -84,6 +85,29 @@ public class L2ClientService {
                         response.bodyToMono(ApiErrorResponse.class)
                                 .flatMap(err -> Mono.error(new L2ClientException(err))))
                 .bodyToMono(responseType);
+    }
+
+    public <T> Mono<ResponseEntity<T>> forwardWithStatus(String path, String method, String token,
+                                                            Object body, String correlationId,
+                                                            Class<T> responseType) {
+        var client = pickClient();
+        var httpMethod = HttpMethod.valueOf(method);
+        var uriSpec = client.method(httpMethod).uri(path);
+
+        if (token != null) {
+            uriSpec = uriSpec.header("Authorization", "Bearer " + token);
+        }
+        uriSpec = uriSpec.header("X-Correlation-Id", correlationId);
+
+        if (body != null) {
+            uriSpec = uriSpec.bodyValue(body);
+        }
+
+        return uriSpec.retrieve()
+                .onStatus(HttpStatusCode::is4xxClientError, response ->
+                        response.bodyToMono(ApiErrorResponse.class)
+                                .flatMap(err -> Mono.error(new L2ClientException(err))))
+                .toEntity(responseType);
     }
 
     public static class L2ClientException extends RuntimeException {

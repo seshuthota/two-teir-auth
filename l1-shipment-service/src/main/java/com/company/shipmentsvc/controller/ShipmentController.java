@@ -5,6 +5,7 @@ import com.company.shipmentsvc.dto.ShipmentResponse;
 import com.company.shipmentsvc.exception.TokenValidationException;
 import com.company.shipmentsvc.security.JwtTokenValidator;
 import jakarta.validation.Valid;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -23,9 +24,11 @@ public class ShipmentController {
     private final JwtTokenValidator jwtTokenValidator;
     private final WebClient l2Client;
 
-    public ShipmentController(JwtTokenValidator jwtTokenValidator, WebClient.Builder webClientBuilder) {
+    public ShipmentController(JwtTokenValidator jwtTokenValidator,
+                               WebClient.Builder webClientBuilder,
+                               @Value("${l2.base-url}") String l2BaseUrl) {
         this.jwtTokenValidator = jwtTokenValidator;
-        this.l2Client = webClientBuilder.baseUrl("http://localhost:8081").build();
+        this.l2Client = webClientBuilder.baseUrl(l2BaseUrl).build();
     }
 
     @PostMapping
