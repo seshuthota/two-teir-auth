@@ -15,12 +15,15 @@ public class RefreshTokenService {
     private final RefreshTokenRedisRepository refreshTokenRedisRepository;
     private final TokenRedisRepository tokenRedisRepository;
     private final TokenService tokenService;
+    private final ScopeService scopeService;
 
     public RefreshTokenService(RefreshTokenRedisRepository refreshTokenRedisRepository,
-                                TokenRedisRepository tokenRedisRepository, TokenService tokenService) {
+                                TokenRedisRepository tokenRedisRepository, TokenService tokenService,
+                                ScopeService scopeService) {
         this.refreshTokenRedisRepository = refreshTokenRedisRepository;
         this.tokenRedisRepository = tokenRedisRepository;
         this.tokenService = tokenService;
+        this.scopeService = scopeService;
     }
 
     public TokenResponse refresh(String refreshToken) {
@@ -37,7 +40,8 @@ public class RefreshTokenService {
         tokenRedisRepository.removeFromClientSessions(clientId, oldJti);
         tokenRedisRepository.deleteAccessTokenMetadata(oldJti);
 
-        var newTokenResponse = tokenService.issueTokens(clientId, "", refreshToken);
+        var scope = scopeService.getClientScopeString(clientId);
+        var newTokenResponse = tokenService.issueTokens(clientId, scope, refreshToken);
 
         var newJti = tokenService.extractJti(newTokenResponse.accessToken());
         var refreshHash = hashRefreshToken(newTokenResponse.refreshToken());
