@@ -564,14 +564,14 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"clientId\": \"{{clientId}}\",\n    \"clientSecret\": \"{{clientSecret}}\"\n}"
-            },
-            "url": {
-              "raw": "{{l2Url}}/internal/auth/token",
-              "host": ["{{l2Url}}"],
-              "path": ["internal", "auth", "token"]
-            },
-            "description": "Direct token issuance from L2 (bypasses L1 proxy)."
+            "raw": "{\n    \"grantType\": \"client_credentials\",\n    \"clientId\": \"{{clientId}}\",\n    \"clientSecret\": \"{{clientSecret}}\"\n}"
+          },
+          "url": {
+            "raw": "{{l2Url}}/internal/auth/token",
+            "host": ["{{l2Url}}"],
+            "path": ["internal", "auth", "token"]
+          },
+          "description": "Direct token issuance from L2 (bypasses L1 proxy)."
           },
           "response": []
         },
@@ -697,17 +697,12 @@
           "response": []
         },
         {
-          "name": "Expired Token (Insufficient Scope)",
+          "name": "Insufficient Scope",
           "request": {
-            "method": "POST",
+            "method": "GET",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
               { "key": "Authorization", "value": "Bearer {{accessToken}}" }
             ],
-            "body": {
-              "mode": "raw",
-              "raw": "{}"
-            },
             "url": {
               "raw": "{{baseUrl}}/invoice/{{invoiceId}}",
               "host": ["{{baseUrl}}"],
