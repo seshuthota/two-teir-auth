@@ -30,15 +30,4 @@ USING (
 WHEN NOT MATCHED THEN
     INSERT (client_id, scope_name) VALUES (s.client_id, s.scope_name);
 
--- Seed API-to-scope mappings
-MERGE INTO auth_api_scope_mapping t
-USING (
-    SELECT 'GET' AS http_method, '/tracking/{awb}' AS api_pattern, 'tracking:read' AS required_scope, 'ACTIVE' AS status FROM DUAL UNION ALL
-    SELECT 'POST', '/shipment', 'shipment:create', 'ACTIVE' FROM DUAL UNION ALL
-    SELECT 'PUT', '/shipment/{id}', 'shipment:update', 'ACTIVE' FROM DUAL UNION ALL
-    SELECT 'POST', '/status/update', 'status:update', 'ACTIVE' FROM DUAL UNION ALL
-    SELECT 'GET', '/invoice/{id}', 'invoice:read', 'ACTIVE' FROM DUAL
-) s ON (t.http_method = s.http_method AND t.api_pattern = s.api_pattern AND t.required_scope = s.required_scope)
-WHEN NOT MATCHED THEN
-    INSERT (http_method, api_pattern, required_scope, status)
-    VALUES (s.http_method, s.api_pattern, s.required_scope, s.status);
+

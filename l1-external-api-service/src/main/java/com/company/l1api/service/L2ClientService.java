@@ -73,32 +73,6 @@ public class L2ClientService {
                 .bodyToMono(Void.class);
     }
 
-    public <T> Mono<T> forwardRequest(String path, String method, String token,
-                                       Object body, String correlationId,
-                                       Class<T> responseType) {
-        var client = pickClient();
-        var httpMethod = HttpMethod.valueOf(method);
-        var uriSpec = client.method(httpMethod).uri(path);
-
-        if (token != null) {
-            uriSpec = uriSpec.header("Authorization", "Bearer " + token);
-        }
-        uriSpec = uriSpec.header("X-Correlation-Id", correlationId);
-
-        if (body != null) {
-            uriSpec = uriSpec.bodyValue(body);
-        }
-
-        return uriSpec.retrieve()
-                .onStatus(HttpStatusCode::is4xxClientError, response ->
-                        response.bodyToMono(ApiErrorResponse.class)
-                                .defaultIfEmpty(new ApiErrorResponse(
-                                        response.statusCode().value(), "Error",
-                                        "UPSTREAM_ERROR", "Upstream service error"))
-                                .flatMap(err -> Mono.error(new L2ClientException(err))))
-                .bodyToMono(responseType);
-    }
-
     public <T> Mono<ResponseEntity<T>> forwardWithStatus(String path, String method, String token,
                                                              Object body, String correlationId,
                                                              Class<T> responseType) {

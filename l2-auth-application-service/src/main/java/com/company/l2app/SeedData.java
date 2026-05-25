@@ -1,10 +1,8 @@
 package com.company.l2app;
 
-import com.company.l2app.entity.AuthApiScopeMapping;
 import com.company.l2app.entity.AuthClient;
 import com.company.l2app.entity.AuthClientScope;
 import com.company.l2app.entity.AuthScope;
-import com.company.l2app.repository.AuthApiScopeMappingRepository;
 import com.company.l2app.repository.AuthClientRepository;
 import com.company.l2app.repository.AuthClientScopeRepository;
 import com.company.l2app.repository.AuthScopeRepository;
@@ -19,16 +17,13 @@ public class SeedData implements CommandLineRunner {
     private final AuthScopeRepository scopeRepository;
     private final AuthClientRepository clientRepository;
     private final AuthClientScopeRepository clientScopeRepository;
-    private final AuthApiScopeMappingRepository apiScopeMappingRepository;
 
     public SeedData(AuthScopeRepository scopeRepository,
                      AuthClientRepository clientRepository,
-                     AuthClientScopeRepository clientScopeRepository,
-                     AuthApiScopeMappingRepository apiScopeMappingRepository) {
+                     AuthClientScopeRepository clientScopeRepository) {
         this.scopeRepository = scopeRepository;
         this.clientRepository = clientRepository;
         this.clientScopeRepository = clientScopeRepository;
-        this.apiScopeMappingRepository = apiScopeMappingRepository;
     }
 
     @Override
@@ -48,20 +43,5 @@ public class SeedData implements CommandLineRunner {
 
         clientScopeRepository.save(new AuthClientScope(client.getClientId(), tracking.getScopeName()));
         clientScopeRepository.save(new AuthClientScope(client.getClientId(), shipmentCreate.getScopeName()));
-
-        saveMapping("GET", "/tracking/{awb}", "tracking:read");
-        saveMapping("POST", "/shipment", "shipment:create");
-        saveMapping("PUT", "/shipment/{id}", "shipment:update");
-        saveMapping("POST", "/status/update", "status:update");
-        saveMapping("GET", "/invoice/{id}", "invoice:read");
-    }
-
-    private void saveMapping(String method, String pattern, String scope) {
-        var mapping = new AuthApiScopeMapping();
-        mapping.setHttpMethod(method);
-        mapping.setApiPattern(pattern);
-        mapping.setRequiredScope(scope);
-        mapping.setStatus("ACTIVE");
-        apiScopeMappingRepository.save(mapping);
     }
 }

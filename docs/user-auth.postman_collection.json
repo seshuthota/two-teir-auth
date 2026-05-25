@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "User Auth API",
-    "description": "Complete collection for testing the two-tier authentication system.\n\n## Architecture\n- **L1 Gateway** (port 8080) — thin proxy, forwards requests to L2\n- **L1 Shipment Service** (port 8082) — standalone microservice with local JWT validation\n- **L2 Auth Service** (port 8081) — internal auth + business logic\n\n## Folders\n- **Authentication** — token issuance, refresh, logout\n- **User Onboarding** — client registration, scope assignment, secret rotation, API-scope mapping\n- **L1 Gateway Proxy APIs** — business endpoints (tracking, shipment, invoice, status)\n- **L1 Shipment Service** — shipment with local JWT validation\n- **L2 Internal** — direct L2 access for debugging\n- **Error Scenarios** — missing/invalid/expired token, wrong credentials\n\n## Setup\n1. Import this collection into Postman\n2. The `baseUrl` variable defaults to `http://localhost:8080`\n3. Use **Get Access Token** first, then run protected endpoints\n4. The `accessToken` variable is auto-saved via the Tests script",
+    "description": "Complete collection for testing the authentication system.\n\n## Architecture\n- **L1 Gateway** (port 8080) — auth proxy + admin endpoints\n- **L2 Auth Service** (port 8081) — internal auth, token issuance, client management\n- **L1 Shipment Service** (port 8082) — standalone microservice with local JWT validation\n\nBusiness APIs (shipment, tracking, invoice, status) are served by separate microservices, not proxied through L1/L2.\n\n## Folders\n- **Authentication** — token issuance, refresh, logout\n- **User Onboarding** — client registration, scope assignment, secret rotation\n- **L1 Shipment Service** — shipment with local JWT validation\n- **L2 Internal** — direct L2 access for debugging\n- **Error Scenarios** — missing/invalid token, wrong credentials\n\n## Setup\n1. Import this collection into Postman\n2. The `baseUrl` variable defaults to `http://localhost:8080`\n3. Use **Get Access Token** first, then run protected endpoints\n4. The `accessToken` variable is auto-saved via the Tests script",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "user-auth"
   },
@@ -372,155 +372,6 @@
             "description": "Create a new permission scope."
           },
           "response": []
-        },
-        {
-          "name": "List API-Scope Mappings",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/admin/api-scope-mappings",
-              "host": ["{{baseUrl}}"],
-              "path": ["admin", "api-scope-mappings"]
-            },
-            "description": "List all API endpoint-to-scope mappings."
-          },
-          "response": []
-        },
-        {
-          "name": "Create API-Scope Mapping",
-          "request": {
-            "method": "POST",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n    \"httpMethod\": \"GET\",\n    \"apiPattern\": \"/billing/invoice\",\n    \"requiredScope\": \"billing:read\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/admin/api-scope-mappings",
-              "host": ["{{baseUrl}}"],
-              "path": ["admin", "api-scope-mappings"]
-            },
-            "description": "Map an API endpoint to a required scope.\n\nThe pattern supports wildcards: `/billing/**` matches any `/billing/xxx` path."
-          },
-          "response": []
-        }
-      ]
-    },
-    {
-      "name": "L1 Gateway Proxy APIs",
-      "description": "Business APIs proxied through the L1 gateway to L2. Token is forwarded for server-side validation.",
-      "item": [
-        {
-          "name": "Get Tracking",
-          "request": {
-            "method": "GET",
-            "header": [
-              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/tracking/{{awb}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["tracking", "{{awb}}"]
-            },
-            "description": "Get tracking information for an airway bill.\n\n**Required scope:** `tracking:read`"
-          },
-          "response": []
-        },
-        {
-          "name": "Create Shipment (L1 Proxy)",
-          "request": {
-            "method": "POST",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n    \"origin\": \"Warehouse A\",\n    \"destination\": \"Distribution Center B\",\n    \"description\": \"Electronics shipment\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/shipment",
-              "host": ["{{baseUrl}}"],
-              "path": ["shipment"]
-            },
-            "description": "Create a new shipment via the L1 proxy.\nToken is forwarded to L2 for validation.\n\n**Required scope:** `shipment:create`"
-          },
-          "response": []
-        },
-        {
-          "name": "Update Shipment",
-          "request": {
-            "method": "PUT",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n    \"status\": \"IN_TRANSIT\",\n    \"location\": \"Sorting Hub\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/shipment/{{shipmentId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["shipment", "{{shipmentId}}"]
-            },
-            "description": "Update an existing shipment.\n\n**Required scope:** `shipment:update`"
-          },
-          "response": []
-        },
-        {
-          "name": "Update Status",
-          "request": {
-            "method": "POST",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n    \"currentStatus\": \"PENDING\",\n    \"newStatus\": \"IN_TRANSIT\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/status/update",
-              "host": ["{{baseUrl}}"],
-              "path": ["status", "update"]
-            },
-            "description": "Update status of a shipment or process.\n\n**Required scope:** `status:update`"
-          },
-          "response": []
-        },
-        {
-          "name": "Get Invoice",
-          "request": {
-            "method": "GET",
-            "header": [
-              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/invoice/{{invoiceId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["invoice", "{{invoiceId}}"]
-            },
-            "description": "Get invoice details.\n\n**Required scope:** `invoice:read`"
-          },
-          "response": []
-        },
-        {
-          "name": "Health Check",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/health",
-              "host": ["{{baseUrl}}"],
-              "path": ["health"]
-            },
-            "description": "L1 health check endpoint."
-          },
-          "response": []
         }
       ]
     },
@@ -645,20 +496,6 @@
             "description": "Create a new scope directly via L2."
           },
           "response": []
-        },
-        {
-          "name": "List API-Scope Mappings (Direct)",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{l2Url}}/internal/admin/api-scope-mappings",
-              "host": ["{{l2Url}}"],
-              "path": ["internal", "admin", "api-scope-mappings"]
-            },
-            "description": "List API-scope mappings directly via L2."
-          },
-          "response": []
         }
       ]
     },
@@ -669,12 +506,12 @@
         {
           "name": "Missing Token",
           "request": {
-            "method": "GET",
+            "method": "POST",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/tracking/{{awb}}",
+              "raw": "{{baseUrl}}/auth/logout",
               "host": ["{{baseUrl}}"],
-              "path": ["tracking", "{{awb}}"]
+              "path": ["auth", "logout"]
             },
             "description": "Call a protected endpoint without any Authorization header.\n\n**Expected:** 401 Unauthorized"
           },
@@ -683,32 +520,16 @@
         {
           "name": "Invalid Token",
           "request": {
-            "method": "GET",
+            "method": "POST",
             "header": [
               { "key": "Authorization", "value": "Bearer invalid.jwt.here" }
             ],
             "url": {
-              "raw": "{{baseUrl}}/tracking/{{awb}}",
+              "raw": "{{baseUrl}}/auth/logout",
               "host": ["{{baseUrl}}"],
-              "path": ["tracking", "{{awb}}"]
+              "path": ["auth", "logout"]
             },
             "description": "Call a protected endpoint with a malformed JWT.\n\n**Expected:** 401 Unauthorized (`AUTH_TOKEN_INVALID`)"
-          },
-          "response": []
-        },
-        {
-          "name": "Insufficient Scope",
-          "request": {
-            "method": "GET",
-            "header": [
-              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/invoice/{{invoiceId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["invoice", "{{invoiceId}}"]
-            },
-            "description": "The test client `external_partner_001` has scopes `tracking:read` and `shipment:create` but NOT `invoice:read`.\n\n**Expected:** 403 Forbidden (`AUTH_INSUFFICIENT_SCOPE`)"
           },
           "response": []
         },
