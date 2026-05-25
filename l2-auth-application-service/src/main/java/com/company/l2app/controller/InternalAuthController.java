@@ -41,30 +41,45 @@ public class InternalAuthController {
     }
 
     @PostMapping("/token")
-    public ResponseEntity<TokenResponse> issueToken(@RequestBody TokenRequest request) {
+    public ResponseEntity<?> issueToken(@RequestBody TokenRequest request) {
         if (!"client_credentials".equals(request.grantType())) {
-            return ResponseEntity.badRequest().body(null);
+            return ResponseEntity.badRequest().body(Map.of(
+                    "status", 400, "error", "Bad Request",
+                    "code", "AUTH_INVALID_GRANT_TYPE", "message", "Unsupported grant type"
+            ));
         }
 
         var clientOpt = clientService.findByClientId(request.clientId());
         if (clientOpt.isEmpty()) {
-            return ResponseEntity.status(401).body(null);
+            return ResponseEntity.status(401).body(Map.of(
+                    "status", 401, "error", "Unauthorized",
+                    "code", "AUTH_CLIENT_NOT_FOUND", "message", "Client not found"
+            ));
         }
 
         var client = clientOpt.get();
         if (!clientService.isActive(client)) {
-            return ResponseEntity.status(403).body(null);
+            return ResponseEntity.status(403).body(Map.of(
+                    "status", 403, "error", "Forbidden",
+                    "code", "AUTH_CLIENT_INACTIVE", "message", "Client is not active"
+            ));
         }
 
         if (clientService.isClientLocked(client.getClientId())) {
-            return ResponseEntity.status(429).body(null);
+            return ResponseEntity.status(429).body(Map.of(
+                    "status", 429, "error", "Too Many Requests",
+                    "code", "AUTH_CLIENT_LOCKED", "message", "Client is locked due to too many failed attempts"
+            ));
         }
 
         if (!clientService.validateCredentials(client, request.clientSecret())) {
             clientService.handleFailedAuth(client.getClientId());
             auditService.log(client.getClientId(), null, "LOGIN_FAILED", "FAILURE",
                     "Invalid client credentials");
-            return ResponseEntity.status(401).body(null);
+            return ResponseEntity.status(401).body(Map.of(
+                    "status", 401, "error", "Unauthorized",
+                    "code", "AUTH_INVALID_CREDENTIALS", "message", "Invalid client credentials"
+            ));
         }
 
         clientService.resetFailedAuth(client.getClientId());
@@ -78,21 +93,27 @@ public class InternalAuthController {
     }
 
     @PostMapping("/refresh")
-    public ResponseEntity<TokenResponse> refreshToken(@RequestBody RefreshTokenRequest request) {
+    public ResponseEntity<?> refreshToken(@RequestBody RefreshTokenRequest request) {
         try {
             var response = refreshTokenService.refresh(request.refreshToken());
             return ResponseEntity.ok(response);
         } catch (RefreshTokenService.InvalidRefreshTokenException e) {
-            return ResponseEntity.status(401).build();
+            return ResponseEntity.status(401).body(Map.of(
+                    "status", 401, "error", "Unauthorized",
+                    "code", "AUTH_INVALID_REFRESH_TOKEN", "message", e.getMessage()
+            ));
         }
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<Void> logout(@RequestHeader("Authorization") String authHeader) {
+    public ResponseEntity<?> logout(@RequestHeader("Authorization") String authHeader) {
         var token = authHeader.replace("Bearer ", "");
         var result = tokenValidator.validate(token);
         if (!result.valid()) {
-            return ResponseEntity.status(401).build();
+            return ResponseEntity.status(401).body(Map.of(
+                    "status", 401, "error", "Unauthorized",
+                    "code", "AUTH_TOKEN_INVALID", "message", "Token is invalid or expired"
+            ));
         }
 
         // Revoke access token
