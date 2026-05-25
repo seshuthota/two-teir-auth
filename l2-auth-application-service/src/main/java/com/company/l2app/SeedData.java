@@ -38,7 +38,7 @@ public class SeedData implements CommandLineRunner {
 
         var client = clientRepository.save(new AuthClient(
                 "external_partner_001", "External Partner 1",
-                "HRCdKH8hv4+Lt3dvGxAwmg==:AjABsSPXKezK79vFtvfqErGtIt3TEMB7PoeOtzOBlXw=",
+                "actt0d1shqO9VQGDy/LJKg==:XS+XDeVWLYGY5W7IqhLFcKqYCw/mcYJd1pbfj4wDRTM=",
                 "ACTIVE"));
 
         clientScopeRepository.save(new AuthClientScope(client.getClientId(), tracking.getScopeName()));

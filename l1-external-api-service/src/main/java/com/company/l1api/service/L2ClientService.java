@@ -78,18 +78,19 @@ public class L2ClientService {
                                                              Class<T> responseType) {
         var client = pickClient();
         var httpMethod = HttpMethod.valueOf(method);
-        var uriSpec = client.method(httpMethod).uri(path);
+        var spec = client.method(httpMethod).uri(path);
 
         if (token != null) {
-            uriSpec = uriSpec.header("Authorization", "Bearer " + token);
+            spec = spec.header("Authorization", "Bearer " + token);
         }
-        uriSpec = uriSpec.header("X-Correlation-Id", correlationId);
+        spec = spec.header("X-Correlation-Id", correlationId);
 
+        WebClient.RequestHeadersSpec<?> headersSpec = spec;
         if (body != null) {
-            uriSpec = uriSpec.bodyValue(body);
+            headersSpec = spec.bodyValue(body);
         }
 
-        return uriSpec.retrieve()
+        return headersSpec.retrieve()
                 .onStatus(HttpStatusCode::is4xxClientError, response ->
                         response.bodyToMono(ApiErrorResponse.class)
                                 .defaultIfEmpty(new ApiErrorResponse(

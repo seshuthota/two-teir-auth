@@ -14,7 +14,7 @@ WHEN NOT MATCHED THEN
 MERGE INTO auth_client t
 USING (
     SELECT 'external_partner_001' AS client_id, 'External Partner 1' AS client_name,
-           'HRCdKH8hv4+Lt3dvGxAwmg==:AjABsSPXKezK79vFtvfqErGtIt3TEMB7PoeOtzOBlXw=' AS client_secret_hash,
+           'actt0d1shqO9VQGDy/LJKg==:XS+XDeVWLYGY5W7IqhLFcKqYCw/mcYJd1pbfj4wDRTM=' AS client_secret_hash,
            'ACTIVE' AS status FROM DUAL
 ) s ON (t.client_id = s.client_id)
 WHEN NOT MATCHED THEN

@@ -12,10 +12,10 @@ public class WebClientConfig {
 
     @Bean
     public List<WebClient> l2WebClients(
-            @Value("${l2.service.base-urls}") List<String> baseUrls,
+            @Value("${l2.service.base-urls}") String baseUrls,
             WebClient.Builder builder) {
-        return baseUrls.stream()
-                .map(url -> builder.baseUrl(url).build())
+        return List.of(baseUrls.split(",")).stream()
+                .map(url -> builder.baseUrl(url.trim()).build())
                 .toList();
     }
 }
