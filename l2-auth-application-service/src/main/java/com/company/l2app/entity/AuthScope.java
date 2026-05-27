@@ -1,7 +1,7 @@
 package com.company.l2app.entity;
 
 import jakarta.persistence.*;
-import java.time.Instant;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "auth_scope")
@@ -18,14 +18,14 @@ public class AuthScope {
     private String description;
 
     @Column(name = "created_at", nullable = false)
-    private Instant createdAt;
+    private LocalDateTime createdAt;
 
     public AuthScope() {}
 
     public AuthScope(String scopeName, String description) {
         this.scopeName = scopeName;
         this.description = description;
-        this.createdAt = Instant.now();
+        this.createdAt = LocalDateTime.now();
     }
 
     public Long getId() { return id; }
@@ -34,11 +34,11 @@ public class AuthScope {
     public void setScopeName(String scopeName) { this.scopeName = scopeName; }
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
-    public Instant getCreatedAt() { return createdAt; }
-    public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 
     @PrePersist
     protected void onCreate() {
-        createdAt = Instant.now();
+        createdAt = LocalDateTime.now();
     }
 }

@@ -1,7 +1,7 @@
 package com.company.l2app.entity;
 
 import jakarta.persistence.*;
-import java.time.Instant;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "auth_token_audit")
@@ -33,7 +33,7 @@ public class TokenAudit {
     private String failureReason;
 
     @Column(name = "created_at", nullable = false)
-    private Instant createdAt;
+    private LocalDateTime createdAt;
 
     public TokenAudit() {}
 
@@ -42,7 +42,7 @@ public class TokenAudit {
         this.tokenId = tokenId;
         this.eventType = eventType;
         this.status = status;
-        this.createdAt = Instant.now();
+        this.createdAt = LocalDateTime.now();
     }
 
     public Long getId() { return id; }
@@ -61,11 +61,11 @@ public class TokenAudit {
     public void setStatus(String status) { this.status = status; }
     public String getFailureReason() { return failureReason; }
     public void setFailureReason(String failureReason) { this.failureReason = failureReason; }
-    public Instant getCreatedAt() { return createdAt; }
-    public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 
     @PrePersist
     protected void onCreate() {
-        createdAt = Instant.now();
+        createdAt = LocalDateTime.now();
     }
 }
